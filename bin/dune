@@ -1,0 +1,4 @@
+(executable
+ (public_name tetromino_civilization)
+ (name main)
+ (libraries tetromino_civilization))

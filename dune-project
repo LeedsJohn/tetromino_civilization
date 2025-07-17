@@ -19,7 +19,19 @@
  (name tetromino_civilization)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends
+   (merlin :dev)
+   (ocaml-lsp-server :dev)
+   (ocamlformat :dev)
+   (utop :dev)
+   async
+   bonsai
+   core
+   core_unix
+   js_of_ocaml
+   js_of_ocaml-ppx
+   ocaml
+   ppx_css)
  (tags
   ("add topics" "to describe" your project)))
 

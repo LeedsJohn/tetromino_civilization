@@ -1,4 +1,6 @@
-(executable
- (public_name tetromino_civilization)
- (name main)
- (libraries tetromino_civilization))
+(executables
+ (public_names tetromino_civilization bruh)
+ (names main bruh)
+ (libraries async core tetromino_civilization)
+ (preprocess
+  (pps ppx_jane)))

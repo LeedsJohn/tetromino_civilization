@@ -18,7 +18,7 @@ module Column = struct
   let length t = Array.length t.data
 
   let make ~len =
-    { data = Array.create ~len Tile.Empty
+    { data = Array.create ~len Tile.empty
     ; start = 0
     ; highest_filled = -1
     ; lowest_filled = Int.max_value
@@ -34,8 +34,8 @@ module Column = struct
   let get t i = t.data.(to_array_index t i)
 
   let set t i tile =
-    if i > t.highest_filled && Tile.equal tile Tile.O then t.highest_filled <- i;
-    if i < t.lowest_filled && Tile.equal tile Tile.O then t.lowest_filled <- i;
+    if i > t.highest_filled && Tile.equal tile Tile.o then t.highest_filled <- i;
+    if i < t.lowest_filled && Tile.equal tile Tile.o then t.lowest_filled <- i;
     t.data.(to_array_index t i) <- tile
   ;;
 
@@ -45,7 +45,7 @@ module Column = struct
       set t !i (get t (!i - 1));
       i := !i - 1
     done;
-    set t t.start Empty;
+    set t t.start Tile.empty;
     t.start <- (t.start + 1) % Array.length t.data
   ;;
 
@@ -53,7 +53,7 @@ module Column = struct
     for i = del_row to t.highest_filled - 1 do
       set t i (get t (i + 1))
     done;
-    set t t.highest_filled Empty
+    set t t.highest_filled Tile.empty
   ;;
 
   (* only lowers [highest_filled]. *)
@@ -62,9 +62,9 @@ module Column = struct
       if i < 0
       then t.highest_filled <- -1
       else (
-        match get t i with
-        | Empty -> loop (i - 1)
-        | I | O | T | S | Z | J | L -> t.highest_filled <- i)
+        match get t i |> Tile.is_empty with
+        | true -> loop (i - 1)
+        | false -> t.highest_filled <- i)
     in
     loop t.highest_filled
   ;;
@@ -152,25 +152,19 @@ let show t =
 
 let%expect_test "resetting highest / lowest filled column" =
   let col = Column.make ~len:5 in
-  List.iter [ 1; 4 ] ~f:(fun i -> Column.set col i Tile.O);
+  List.iter [ 1; 4 ] ~f:(fun i -> Column.set col i Tile.o);
   print_s [%sexp (col : Column.t)];
   [%expect
-    {|
-    ((data (Empty O Empty Empty O)) (start 0) (highest_filled 4)
-     (lowest_filled 1))
-    |}];
+    {| ((data (() (O) () () (O))) (start 0) (highest_filled 4) (lowest_filled 1)) |}];
   Column.delete col 4;
   print_s [%sexp (col : Column.t)];
   [%expect
-    {|
-    ((data (Empty O Empty Empty Empty)) (start 0) (highest_filled 1)
-     (lowest_filled 1))
-    |}];
+    {| ((data (() (O) () () ())) (start 0) (highest_filled 1) (lowest_filled 1)) |}];
   Column.delete col 1;
   print_s [%sexp (col : Column.t)];
   [%expect
     {|
-    ((data (Empty Empty Empty Empty Empty)) (start 1) (highest_filled -1)
+    ((data (() () () () ())) (start 1) (highest_filled -1)
      (lowest_filled 4611686018427387903))
     |}]
 ;;
@@ -178,7 +172,7 @@ let%expect_test "resetting highest / lowest filled column" =
 let%expect_test "deleting column entry" =
   let t = Column.make ~len:5 in
   let full_indices = [ 1; 2; 4 ] in
-  List.iter full_indices ~f:(fun i -> Column.set t i Tile.O);
+  List.iter full_indices ~f:(fun i -> Column.set t i Tile.o);
   List.range 0 5
   |> List.iter ~f:(fun row ->
     let new_t = Column.copy t in
@@ -188,22 +182,19 @@ let%expect_test "deleting column entry" =
     {|
     ((deleted 0)
      (column
-      ((data (Empty O O Empty O)) (start 1) (highest_filled 3) (lowest_filled 0))))
+      ((data (() (O) (O) () (O))) (start 1) (highest_filled 3) (lowest_filled 0))))
     ((deleted 1)
      (column
-      ((data (Empty Empty O Empty O)) (start 1) (highest_filled 3)
-       (lowest_filled 1))))
+      ((data (() () (O) () (O))) (start 1) (highest_filled 3) (lowest_filled 1))))
     ((deleted 2)
      (column
-      ((data (Empty Empty O Empty O)) (start 1) (highest_filled 3)
-       (lowest_filled 1))))
+      ((data (() () (O) () (O))) (start 1) (highest_filled 3) (lowest_filled 1))))
     ((deleted 3)
      (column
-      ((data (Empty O O O Empty)) (start 0) (highest_filled 3) (lowest_filled 1))))
+      ((data (() (O) (O) (O) ())) (start 0) (highest_filled 3) (lowest_filled 1))))
     ((deleted 4)
      (column
-      ((data (Empty O O Empty Empty)) (start 0) (highest_filled 2)
-       (lowest_filled 1))))
+      ((data (() (O) (O) () ())) (start 0) (highest_filled 2) (lowest_filled 1))))
     |}]
 ;;
 
@@ -212,8 +203,8 @@ let%expect_test "deleting row" =
   for row = 0 to 6 do
     let c1 = Coordinate.make ~row ~col:(row % 5) in
     let c2 = Coordinate.make ~row ~col:((row + 1) % 5) in
-    set t c1 Tile.O;
-    set t c2 Tile.O
+    set t c1 Tile.o;
+    set t c2 Tile.o
   done;
   show t;
   [%expect

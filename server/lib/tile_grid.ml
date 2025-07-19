@@ -34,8 +34,8 @@ module Column = struct
   let get t i = t.data.(to_array_index t i)
 
   let set t i tile =
-    if i > t.highest_filled && Tile.equal tile Tile.Full then t.highest_filled <- i;
-    if i < t.lowest_filled && Tile.equal tile Tile.Full then t.lowest_filled <- i;
+    if i > t.highest_filled && Tile.equal tile Tile.O then t.highest_filled <- i;
+    if i < t.lowest_filled && Tile.equal tile Tile.O then t.lowest_filled <- i;
     t.data.(to_array_index t i) <- tile
   ;;
 
@@ -64,7 +64,7 @@ module Column = struct
       else (
         match get t i with
         | Empty -> loop (i - 1)
-        | Full -> t.highest_filled <- i)
+        | I | O | T | S | Z | J | L -> t.highest_filled <- i)
     in
     loop t.highest_filled
   ;;
@@ -74,9 +74,9 @@ module Column = struct
       if i >= Array.length t.data
       then t.lowest_filled <- Int.max_value
       else (
-        match get t i with
-        | Empty -> loop (i + 1)
-        | Full -> t.lowest_filled <- i)
+        match get t i |> Tile.is_empty with
+        | true -> loop (i + 1)
+        | false -> t.lowest_filled <- i)
     in
     loop (Int.max 0 (t.lowest_filled - 1))
   ;;
@@ -152,18 +152,18 @@ let show t =
 
 let%expect_test "resetting highest / lowest filled column" =
   let col = Column.make ~len:5 in
-  List.iter [ 1; 4 ] ~f:(fun i -> Column.set col i Tile.Full);
+  List.iter [ 1; 4 ] ~f:(fun i -> Column.set col i Tile.O);
   print_s [%sexp (col : Column.t)];
   [%expect
     {|
-    ((data (Empty Full Empty Empty Full)) (start 0) (highest_filled 4)
+    ((data (Empty O Empty Empty O)) (start 0) (highest_filled 4)
      (lowest_filled 1))
     |}];
   Column.delete col 4;
   print_s [%sexp (col : Column.t)];
   [%expect
     {|
-    ((data (Empty Full Empty Empty Empty)) (start 0) (highest_filled 1)
+    ((data (Empty O Empty Empty Empty)) (start 0) (highest_filled 1)
      (lowest_filled 1))
     |}];
   Column.delete col 1;
@@ -178,7 +178,7 @@ let%expect_test "resetting highest / lowest filled column" =
 let%expect_test "deleting column entry" =
   let t = Column.make ~len:5 in
   let full_indices = [ 1; 2; 4 ] in
-  List.iter full_indices ~f:(fun i -> Column.set t i Tile.Full);
+  List.iter full_indices ~f:(fun i -> Column.set t i Tile.O);
   List.range 0 5
   |> List.iter ~f:(fun row ->
     let new_t = Column.copy t in
@@ -188,23 +188,21 @@ let%expect_test "deleting column entry" =
     {|
     ((deleted 0)
      (column
-      ((data (Empty Full Full Empty Full)) (start 1) (highest_filled 3)
-       (lowest_filled 0))))
+      ((data (Empty O O Empty O)) (start 1) (highest_filled 3) (lowest_filled 0))))
     ((deleted 1)
      (column
-      ((data (Empty Empty Full Empty Full)) (start 1) (highest_filled 3)
+      ((data (Empty Empty O Empty O)) (start 1) (highest_filled 3)
        (lowest_filled 1))))
     ((deleted 2)
      (column
-      ((data (Empty Empty Full Empty Full)) (start 1) (highest_filled 3)
+      ((data (Empty Empty O Empty O)) (start 1) (highest_filled 3)
        (lowest_filled 1))))
     ((deleted 3)
      (column
-      ((data (Empty Full Full Full Empty)) (start 0) (highest_filled 3)
-       (lowest_filled 1))))
+      ((data (Empty O O O Empty)) (start 0) (highest_filled 3) (lowest_filled 1))))
     ((deleted 4)
      (column
-      ((data (Empty Full Full Empty Empty)) (start 0) (highest_filled 2)
+      ((data (Empty O O Empty Empty)) (start 0) (highest_filled 2)
        (lowest_filled 1))))
     |}]
 ;;
@@ -214,20 +212,20 @@ let%expect_test "deleting row" =
   for row = 0 to 6 do
     let c1 = Coordinate.make ~row ~col:(row % 5) in
     let c2 = Coordinate.make ~row ~col:((row + 1) % 5) in
-    set t c1 Tile.Full;
-    set t c2 Tile.Full
+    set t c1 Tile.O;
+    set t c2 Tile.O
   done;
   show t;
   [%expect
     {|
     truncated 3 empty rows
-      6 .##..
-      5 ##...
-      4 #...#
-      3 ...##
-      2 ..##.
-      1 .##..
-      0 ##...
+      6 .OO..
+      5 OO...
+      4 O...O
+      3 ...OO
+      2 ..OO.
+      1 .OO..
+      0 OO...
         012345
     |}];
   delete_row t 1;
@@ -236,11 +234,11 @@ let%expect_test "deleting row" =
   [%expect
     {|
     truncated 5 empty rows
-      4 .##..
-      3 #...#
-      2 ...##
-      1 ..##.
-      0 ##...
+      4 .OO..
+      3 O...O
+      2 ...OO
+      1 ..OO.
+      0 OO...
         012345
     |}]
 ;;

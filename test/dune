@@ -1,2 +1,8 @@
-(test
- (name test_tetromino_civilization))
+(library
+ (name test_tetromino_civilization)
+ (libraries core core_unix tetromino_civilization_common)
+ (preprocess
+  (pps ppx_jane))
+ (inline_tests
+  (deps
+   (glob_files assets/*.sexp))))

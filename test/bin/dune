@@ -1,0 +1,5 @@
+(executables
+ (names make_test replay_test)
+ (libraries core tetromino_civilization_common)
+ (preprocess
+  (pps ppx_jane)))

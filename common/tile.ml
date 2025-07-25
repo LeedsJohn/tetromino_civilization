@@ -1,25 +1,32 @@
 open! Core
 
-(* TODO: change this to a [or_null] *)
-type t = Piece_type.t option [@@deriving equal, sexp_of]
+type t =
+  | Empty
+  | Locked of Piece_type.t
+  | Filled
+[@@deriving compare, equal, sexp]
 
 let to_char = function
-  | None -> '.'
-  | Some Piece_type.I -> 'I'
-  | Some O -> 'O'
-  | Some T -> 'T'
-  | Some S -> 'S'
-  | Some Z -> 'Z'
-  | Some J -> 'J'
-  | Some L -> 'L'
+  | Empty -> '.'
+  | Locked piece_type -> Piece_type.to_char piece_type |> Char.uppercase
+  | Filled -> '#'
 ;;
 
-let is_empty = Option.is_none
-let empty = None
-let i = Some Piece_type.I
-let o = Some Piece_type.O
-let t = Some Piece_type.T
-let s = Some Piece_type.S
-let z = Some Piece_type.Z
-let j = Some Piece_type.J
-let l = Some Piece_type.L
+let is_empty = function
+  | Empty -> true
+  | Locked _ | Filled -> false
+;;
+
+let is_locked = function
+  | Locked _ -> true
+  | Empty | Filled -> false
+;;
+
+let is_filled = function
+  | Filled -> true
+  | Locked _ | Empty -> false
+;;
+
+let empty = Empty
+let locked piece_type = Locked piece_type
+let filled = Filled

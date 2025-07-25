@@ -1,3 +1,4 @@
+(** Types of tetrominos. *)
 open! Core
 
 type t =
@@ -8,6 +9,6 @@ type t =
   | Z
   | J
   | L
-[@@deriving equal, sexp_of]
+[@@deriving compare, equal, sexp]
 
 val to_char : t -> char

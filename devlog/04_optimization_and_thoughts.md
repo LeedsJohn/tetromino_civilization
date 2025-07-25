@@ -44,7 +44,7 @@ holes, etc.
 ### Where to go next?
 
 I feel like a lot of this logic can be shared. Maybe the next thing would be to use the
-`Tile_grid` module to create a `Board` that can apply Tetris moves (movement / rotation).
+`Tile_grid` module to create a `Board` that can apply moves (movement / rotation).
 After that, it would be simple to make something someone could play (singleplayer).
 
 I really just need to get something down, but that is feeling a little bit intimidating

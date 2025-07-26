@@ -1,0 +1,5 @@
+(executable
+ (public_name bruh)
+ (libraries async core tetromino_civilization_server)
+ (preprocess
+  (pps ppx_jane)))

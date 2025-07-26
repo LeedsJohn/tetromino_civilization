@@ -8,7 +8,7 @@ type t =
   | Z
   | J
   | L
-[@@deriving compare, equal, sexp]
+[@@deriving bin_io, compare, equal, sexp]
 
 let to_char = function
   | I -> 'I'

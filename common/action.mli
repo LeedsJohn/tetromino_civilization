@@ -8,4 +8,4 @@ type t =
   | Delete_chunk of int
   | Add_chunk
   | Fill_tile of Coordinate.t
-[@@deriving sexp]
+[@@deriving bin_io, sexp]

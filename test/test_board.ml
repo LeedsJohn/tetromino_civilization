@@ -1,7 +1,6 @@
 (** Replays games created with bin/make_test.ml and make sure that the boards match up. *)
 
 open! Core
-open! Core_unix
 open! Tetromino_civilization_common
 
 let get_test_data () =

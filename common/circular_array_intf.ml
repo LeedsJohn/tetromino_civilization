@@ -3,14 +3,14 @@
 open! Core
 
 module type S = sig
-  type t [@@deriving equal, sexp_of]
+  type t [@@deriving bin_io, equal, sexp_of]
 
   val empty_value : t
 end
 
 module type Circular_array = sig
   type elem
-  type t [@@deriving equal, sexp_of]
+  type t [@@deriving bin_io, equal, sexp_of]
 
   val make : len:int -> t
   val reset : t -> unit

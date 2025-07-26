@@ -7,4 +7,4 @@ type t =
   | Drop
   | Clockwise
   | Counter_clockwise
-[@@deriving sexp]
+[@@deriving bin_io, sexp]

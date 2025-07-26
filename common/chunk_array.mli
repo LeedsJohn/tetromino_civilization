@@ -1,7 +1,7 @@
 (** Holds all the [Chunk.t]s that make up a [Board.t]. *)
 open! Core
 
-type t
+type t [@@deriving bin_io]
 
 val make : rows:int -> chunk_cols:int -> max_len:int -> start_len:int -> t
 

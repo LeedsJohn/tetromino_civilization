@@ -8,7 +8,7 @@ type t =
   ; mutable start : int
   ; mutable end_ : int
   }
-[@@deriving equal, sexp_of]
+[@@deriving bin_io, sexp_of]
 
 let make ~rows ~chunk_cols ~max_len ~start_len =
   let end_ =

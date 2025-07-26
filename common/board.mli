@@ -1,6 +1,6 @@
 open! Core
 
-type t
+type t [@@deriving bin_io]
 
 val create
   :  start_num_chunks:int

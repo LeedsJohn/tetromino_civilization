@@ -1,6 +1,11 @@
-(executables
- (public_names tetromino_civilization bruh)
- (names main bruh)
- (libraries async core tetromino_civilization)
+(executable
+ (public_name tetromino_civilization)
+ (libraries
+  async
+  async_kernel
+  async_rpc_websocket
+  core
+  tetromino_civilization_client
+  tetromino_civilization_protocol)
  (preprocess
   (pps ppx_jane)))

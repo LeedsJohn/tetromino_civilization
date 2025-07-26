@@ -1,7 +1,7 @@
 (** Represents a tetromino. *)
 open! Core
 
-type t [@@deriving equal, sexp_of]
+type t [@@deriving bin_io, equal, sexp_of]
 
 (** Container functions over the coordinates of the piece. *)
 include Container.S0 with type t := t and type elt := Coordinate.t

@@ -1,6 +1,6 @@
 open! Core
 
-type t = int * int [@@deriving compare, equal, sexp]
+type t = int * int [@@deriving bin_io, compare, equal, sexp]
 
 let row_col (row, col) = row, col
 let row (row, _col) = row

@@ -1,0 +1,6 @@
+(library
+ (name tetromino_civilization_protocol)
+ (libraries async core tetromino_civilization_common)
+ (preprocess
+  (pps ppx_jane))
+ (inline_tests))

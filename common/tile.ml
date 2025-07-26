@@ -4,7 +4,7 @@ type t =
   | Empty
   | Locked of Piece_type.t
   | Filled
-[@@deriving compare, equal, sexp]
+[@@deriving bin_io, compare, equal, sexp]
 
 let to_char = function
   | Empty -> '.'

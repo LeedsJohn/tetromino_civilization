@@ -1,11 +1,8 @@
 (library
- (name tetromino_civilization_server)
+ (name tetromino_civilization_client)
  (libraries
   async
-  async_rpc_websocket
   core
-  cohttp
-  cohttp-async
   tetromino_civilization_common
   tetromino_civilization_protocol)
  (preprocess

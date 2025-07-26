@@ -1,7 +1,7 @@
 (** (row, column) pair. Can be used as either a vector or a point. *)
 open! Core
 
-type t [@@deriving compare, equal, sexp]
+type t [@@deriving bin_io, compare, equal, sexp]
 
 val make : row:int -> col:int -> t
 val row_col : t -> int * int

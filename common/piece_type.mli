@@ -9,6 +9,6 @@ type t =
   | Z
   | J
   | L
-[@@deriving compare, equal, sexp]
+[@@deriving bin_io, compare, equal, sexp]
 
 val to_char : t -> char

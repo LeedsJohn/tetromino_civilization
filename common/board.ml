@@ -2,7 +2,7 @@ open! Core
 
 module Row_filled_cells_counter = struct
   include Circular_array.Make (struct
-      type t = int [@@deriving equal, sexp_of]
+      type t = int [@@deriving bin_io, equal, sexp_of]
 
       let empty_value = 0
     end)
@@ -16,6 +16,7 @@ type t =
   ; player_chunk_ids : int Hashtbl.M(Client_id).t
   ; row_filled_cells : Row_filled_cells_counter.t
   }
+[@@deriving bin_io]
 
 let copy t =
   { data = Chunk_array.copy t.data

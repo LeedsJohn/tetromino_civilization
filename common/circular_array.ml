@@ -17,7 +17,7 @@ functor
       ; mutable highest_non_empty : int
       ; mutable lowest_non_empty : int
       }
-    [@@deriving equal, sexp_of]
+    [@@deriving bin_io, equal, sexp_of]
 
     let length t = Array.length t.data
 
@@ -132,7 +132,7 @@ functor
   end
 
 module Char_circular_array = Make (struct
-    type t = char [@@deriving equal, sexp_of]
+    type t = char [@@deriving bin_io, equal, sexp_of]
 
     let empty_value = '.'
   end)

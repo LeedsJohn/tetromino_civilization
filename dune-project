@@ -5,13 +5,13 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github LeedsJohn/tetromino_civilization))
 
-(authors "Author Name <author@example.com>")
+(authors "John Leeds <leedsjohn6@gmail.com>")
 
 (maintainers "Maintainer Name <maintainer@example.com>")
 
-(license LICENSE)
+(license GPL-3.0)
 
 (documentation https://url/to/documentation)
 
@@ -25,6 +25,7 @@
    (ocamlformat :dev)
    (utop :dev)
    async
+   async_js
    bonsai
    core
    core_unix

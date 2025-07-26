@@ -3,12 +3,12 @@ opam-version: "2.0"
 synopsis: "A short synopsis"
 description: "A longer description"
 maintainer: ["Maintainer Name <maintainer@example.com>"]
-authors: ["Author Name <author@example.com>"]
-license: "LICENSE"
+authors: ["John Leeds <leedsjohn6@gmail.com>"]
+license: "GPL-3.0"
 tags: ["add topics" "to describe" "your" "project"]
-homepage: "https://github.com/username/reponame"
+homepage: "https://github.com/LeedsJohn/tetromino_civilization"
 doc: "https://url/to/documentation"
-bug-reports: "https://github.com/username/reponame/issues"
+bug-reports: "https://github.com/LeedsJohn/tetromino_civilization/issues"
 depends: [
   "dune" {>= "3.19"}
   "merlin" {dev}
@@ -16,6 +16,7 @@ depends: [
   "ocamlformat" {dev}
   "utop" {dev}
   "async"
+  "async_js"
   "bonsai"
   "core"
   "core_unix"
@@ -39,5 +40,5 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/LeedsJohn/tetromino_civilization.git"
 x-maintenance-intent: ["(latest)"]

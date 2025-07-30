@@ -1,3 +1,3 @@
 open! Core
 
-type t
+(* type t *)

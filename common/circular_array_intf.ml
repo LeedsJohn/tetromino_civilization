@@ -12,6 +12,12 @@ module type Circular_array = sig
 
   val make : max_len:int -> start_len:int -> t
   val length : t -> int
+  val capacity : t -> int
+
+  (** Deletes elements from the end if the requested length is less than the current
+      length. *)
+  val set_length : t -> int -> unit
+
   val copy : t -> t
   val get : t -> int -> elem option
   val get_some_exn : t -> int -> elem

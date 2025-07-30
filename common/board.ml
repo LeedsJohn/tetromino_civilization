@@ -1,14 +1,28 @@
 open! Core
 
 module Row_filled_cells_counter = struct
-  include Circular_array.Make (struct
-      type t = int [@@deriving bin_io, equal, sexp_of]
-
-      let empty_value = 0
+  module Ar = Circular_array.Make (struct
+      type t = int [@@deriving bin_io, sexp_of]
     end)
 
-  let incr t i = set t i (get t i + 1)
-  let decr t i = set t i (get t i - 1)
+  type t = Ar.t [@@deriving bin_io, sexp_of]
+
+  let make ~len =
+    let t = Ar.make ~max_len:len ~start_len:len in
+    List.range 0 len |> List.iter ~f:(fun i -> Ar.set_some t i 0);
+    t
+  ;;
+
+  let copy = Ar.copy
+  let incr t i = Ar.set_some t i (Ar.get_some_exn t i + 1)
+  let decr t i = Ar.set_some t i (Ar.get_some_exn t i - 1)
+
+  let delete_and_add_row t i =
+    Ar.delete t i;
+    Ar.append_some t 0
+  ;;
+
+  let to_array = Ar.to_some_array
 end
 
 (* A player can potentially be in two chunks simultaneously if their piece spans two

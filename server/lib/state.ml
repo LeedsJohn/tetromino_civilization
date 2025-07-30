@@ -1,7 +1,7 @@
 open! Core
-open Tetromino_civilization_common
+(* open Tetromino_civilization_common
 
-type t =
+ type t =
   { board : Board.t
   ; moves_by_chunk : Action_list.t array
   ; loaded_chunks : int list Hashtbl.M(Client_id).t
@@ -65,4 +65,4 @@ let apply_action t = function
     add_action t [ chunk_id ] act;
     let _ = Board.apply_action t.board act in
     ()
-;;
+;; *)

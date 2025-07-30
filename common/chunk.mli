@@ -4,7 +4,7 @@
     Positions that are locked are stored separately from falling pieces. *)
 open! Core
 
-type t [@@deriving bin_io, equal, sexp_of]
+type t [@@deriving bin_io, sexp_of]
 
 val make : rows:int -> cols:int -> t
 

@@ -1,16 +1,10 @@
 open! Core
 
-module Column = Circular_array.Make (struct
-    type t = Tile.t [@@deriving bin_io, equal, sexp_of]
-
-    let empty_value = Tile.empty
-  end)
-
 type t =
   { data : Column.t array
   ; players : Piece.t Hashtbl.M(Client_id).t
   }
-[@@deriving bin_io, equal, sexp_of]
+[@@deriving bin_io, sexp_of]
 
 let make ~rows ~cols =
   let data = Array.init cols ~f:(fun _ -> Column.make ~len:rows) in

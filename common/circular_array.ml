@@ -32,6 +32,7 @@ functor
     ;;
 
     let length t = t.length
+    let capacity t = Option_array.length t.data
     let lowest_non_empty t = t.lowest_non_empty
     let highest_non_empty t = t.highest_non_empty
 
@@ -149,6 +150,22 @@ functor
 
     let append_none t = append t None
     let append_some t e = append t (Some e)
+
+    let set_length t len =
+      if not (Int.between len ~low:0 ~high:(Option_array.length t.data))
+      then
+        raise_s
+          [%message
+            "len must be between 0 and [max_length]"
+              ~requested_length:(len : int)
+              ~max_length:(Option_array.length t.data : int)];
+      while length t < len do
+        append_none t
+      done;
+      while length t > len do
+        delete t (length t - 1)
+      done
+    ;;
   end
 
 module Char_circular_array = Make (struct

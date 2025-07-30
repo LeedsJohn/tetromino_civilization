@@ -5,7 +5,7 @@ type t =
   ; pivot_position : Coordinate.t
   ; rotate_count : int
   }
-[@@deriving bin_io, equal, sexp_of]
+[@@deriving bin_io, equal, sexp]
 
 let make ?(rotate_count = 0) ~piece_type ~pivot_position () =
   { piece_type; pivot_position; rotate_count }

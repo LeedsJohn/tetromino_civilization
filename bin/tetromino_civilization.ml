@@ -4,7 +4,6 @@ open! Tetromino_civilization_client
 module Protocol = Tetromino_civilization_protocol
 
 let run () =
-  print_endline "lrcehaoulrecoulrchalroc";
   let%bind conn =
     Rpc_websocket.Rpc.client (Uri.make ~host:"Johns-Mac-mini.local" ~port:31415 ())
   in

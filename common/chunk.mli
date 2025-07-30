@@ -29,3 +29,4 @@ val num_cols : t -> int
 val show : ?with_labels:bool -> t -> unit
 
 val copy : t -> t
+val highest_non_empty_row : t -> int -> int option

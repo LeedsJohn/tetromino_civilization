@@ -11,9 +11,12 @@ module Row_filled_cells_counter = struct
   let decr t i = set t i (get t i - 1)
 end
 
+(* A player can potentially be in two chunks simultaneously if their piece spans two
+   chunks.
+   The second int is set to (-1) if the player is only in one chunk. *)
 type t =
   { data : Chunk_array.t
-  ; player_chunk_ids : int Hashtbl.M(Client_id).t
+  ; player_chunk_ids : int list Hashtbl.M(Client_id).t
   ; row_filled_cells : Row_filled_cells_counter.t
   }
 [@@deriving bin_io]
@@ -25,6 +28,8 @@ let copy t =
   }
 ;;
 
+let num_chunks t = Chunk_array.length t.data
+
 let add_chunk t =
   if Chunk_array.length t.data < Chunk_array.capacity t.data
   then (
@@ -34,6 +39,8 @@ let add_chunk t =
 ;;
 
 let create ~start_num_chunks ~max_num_chunks ~num_rows ~chunk_cols =
+  if num_rows < 4 then raise_s [%message "num_rows must be >= 4" (num_rows : int)];
+  if chunk_cols < 3 then raise_s [%message "chunk_cols must be >= 3" (chunk_cols : int)];
   let data =
     Chunk_array.make
       ~start_len:start_num_chunks
@@ -47,16 +54,16 @@ let create ~start_num_chunks ~max_num_chunks ~num_rows ~chunk_cols =
     ; row_filled_cells = Row_filled_cells_counter.make ~len:num_rows
     }
   in
-  for _ = 0 to start_num_chunks - 1 do
-    let _ = add_chunk t in
-    ()
-  done;
   t
+;;
+
+let chunks_that_piece_is_inside t client_id =
+  Hashtbl.find t.player_chunk_ids client_id |> Option.value ~default:[]
 ;;
 
 let num_rows t = Chunk_array.get t.data 0 |> Chunk.num_rows
 let num_cols t = (Chunk_array.get t.data 0 |> Chunk.num_cols) * Chunk_array.length t.data
-let chunk_cols t = Chunk_array.get t.data 0 |> Chunk.num_cols
+let cols_per_chunk t = Chunk_array.get t.data 0 |> Chunk.num_cols
 
 let in_bounds t coord =
   let max_col = num_cols t - 1 in
@@ -66,8 +73,8 @@ let in_bounds t coord =
 
 let get_chunk_index_and_coord t coord =
   let row, col = Coordinate.row_col coord in
-  let chunk_i = col / chunk_cols t in
-  chunk_i, Coordinate.make ~row ~col:(col - (chunk_i * chunk_cols t))
+  let chunk_i = col / cols_per_chunk t in
+  chunk_i, Coordinate.make ~row ~col:(col - (chunk_i * cols_per_chunk t))
 ;;
 
 let get t coord =
@@ -91,31 +98,46 @@ let set t coord tile =
   Chunk.set chunk chunk_coord tile
 ;;
 
-let player_chunk t client_id =
-  let%bind.Option chunk_id = Hashtbl.find t.player_chunk_ids client_id in
-  Chunk_array.get t.data chunk_id |> Some
+let player_chunks t client_id =
+  chunks_that_piece_is_inside t client_id |> List.map ~f:(Chunk_array.get t.data)
 ;;
 
 let get_piece t client_id =
-  let%bind.Option player_chunk = player_chunk t client_id in
-  Chunk.get_piece player_chunk client_id |> Some
+  match player_chunks t client_id with
+  | [] -> None
+  | chunk :: _ -> Chunk.get_piece chunk client_id |> Some
 ;;
 
 let get_piece_exn t client_id = get_piece t client_id |> Option.value_exn
 
 let remove_piece t client_id =
-  (match player_chunk t client_id with
-   | None -> ()
-   | Some chunk -> Chunk.remove_piece chunk client_id);
+  player_chunks t client_id
+  |> List.iter ~f:(fun chunk -> Chunk.remove_piece chunk client_id);
   Hashtbl.remove t.player_chunk_ids client_id
+;;
+
+let highest_non_empty_row t ~col =
+  let chunk_i = col / cols_per_chunk t in
+  let adj_col = col - (chunk_i * cols_per_chunk t) in
+  let chunk = Chunk_array.get t.data chunk_i in
+  Chunk.highest_non_empty_row chunk adj_col
+;;
+
+let disconnect t client_id =
+  remove_piece t client_id;
+  true
 ;;
 
 let set_piece t client_id piece =
   remove_piece t client_id;
-  let chunk_id = (Piece.pivot_position piece |> Coordinate.col) / chunk_cols t in
-  Hashtbl.set t.player_chunk_ids ~key:client_id ~data:chunk_id;
-  let chunk = Chunk_array.get t.data chunk_id in
-  Chunk.set_piece chunk client_id piece
+  let chunk_ids =
+    Piece.coordinates piece
+    |> List.map ~f:(fun coord -> Coordinate.col coord / cols_per_chunk t)
+    |> List.dedup_and_sort ~compare:Int.compare
+  in
+  Hashtbl.set t.player_chunk_ids ~key:client_id ~data:chunk_ids;
+  List.map chunk_ids ~f:(Chunk_array.get t.data)
+  |> List.iter ~f:(fun chunk -> Chunk.set_piece chunk client_id piece)
 ;;
 
 let all_player_positions t =
@@ -127,7 +149,8 @@ let piece_is_inside_filled_or_locked_tile t = Piece.exists ~f:(is_filled_or_lock
 
 let update_row_filled_count_after_deleting_chunk t chunk_index =
   for
-    col = chunk_index * chunk_cols t to (chunk_index * chunk_cols t) + chunk_cols t - 1
+    col = chunk_index * cols_per_chunk t
+    to (chunk_index * cols_per_chunk t) + cols_per_chunk t - 1
   do
     for row = 0 to num_rows t - 1 do
       set t (Coordinate.make ~row ~col) Tile.empty
@@ -139,8 +162,13 @@ let delete_chunk t i =
   if Chunk_array.length t.data > 1 && i < Chunk_array.length t.data
   then (
     let players_to_move =
-      Hashtbl.fold t.player_chunk_ids ~init:[] ~f:(fun ~key:client_id ~data:chunk_i acc ->
-        if chunk_i > i then (client_id, get_piece_exn t client_id) :: acc else acc)
+      Hashtbl.fold
+        t.player_chunk_ids
+        ~init:[]
+        ~f:(fun ~key:client_id ~data:chunk_ids acc ->
+          if List.exists chunk_ids ~f:(fun chunk_id -> chunk_id > i)
+          then (client_id, get_piece_exn t client_id) :: acc
+          else acc)
     in
     List.iter players_to_move ~f:(fun (client_id, _piece) -> remove_piece t client_id);
     update_row_filled_count_after_deleting_chunk t i;
@@ -149,13 +177,67 @@ let delete_chunk t i =
       set_piece
         t
         client_id
-        (Piece.move piece ~dir:(Coordinate.make ~row:0 ~col:(-chunk_cols t))));
+        (Piece.move piece ~dir:(Coordinate.make ~row:0 ~col:(-cols_per_chunk t))));
     true)
   else false
 ;;
 
 let fill_tile t coord =
   set t coord Tile.filled;
+  true
+;;
+
+let valid_piece_position t piece =
+  Piece.for_all piece ~f:(fun coord -> in_bounds t coord && get t coord |> Tile.is_empty)
+;;
+
+(* this is shit *)
+let get_spawn_position t col piece_type =
+  let desired_height_dif = 10 in
+  let spawn_radius = 2 in
+  let min_row, max_row, min_col, max_col =
+    Piece.make ~piece_type ~pivot_position:Coordinate.origin ()
+    |> Piece.fold ~init:(0, 0, 0, 0) ~f:(fun (min_row, max_row, min_col, max_col) coord ->
+      let r, c = Coordinate.row_col coord in
+      Int.min min_row r, Int.max max_row r, Int.min min_col c, Int.max max_col c)
+  in
+  let min_row, min_col = Int.abs min_row, Int.abs min_col in
+  let max_row_spawn = num_rows t - 3 - max_row in
+  let get_row_to_spawn_in col =
+    if not (Int.between col ~low:0 ~high:(num_cols t - 1))
+    then None
+    else (
+      let highest_non_empty =
+        List.range
+          (Int.max (col - min_col - spawn_radius) 0)
+          (Int.min (col + max_col + spawn_radius + 1) (num_cols t))
+        |> List.map ~f:(fun col -> highest_non_empty_row t ~col)
+        |> List.map ~f:(Option.value ~default:0)
+        |> List.max_elt ~compare:Int.compare
+        |> Option.value_exn
+      in
+      let min_row_spawn = highest_non_empty + 1 + min_row in
+      Option.some_if
+        (min_row_spawn <= max_row_spawn)
+        (Int.min (highest_non_empty + desired_height_dif + min_row) max_row_spawn))
+  in
+  let rec search i =
+    let col = col + i in
+    let next_i = if i = 0 then -1 else if i < 0 then -1 * i else -1 * (i + 1) in
+    match get_row_to_spawn_in col with
+    | None -> search next_i
+    | Some row ->
+      let pivot_position = Coordinate.make ~row ~col in
+      let piece = Piece.make ~piece_type ~pivot_position () in
+      if valid_piece_position t piece then pivot_position else search next_i
+  in
+  search 0
+;;
+
+let spawn_piece t client_id col piece_type =
+  let pivot_position = get_spawn_position t col piece_type in
+  let piece = Piece.make ~piece_type ~pivot_position () in
+  set_piece t client_id piece;
   true
 ;;
 
@@ -196,19 +278,6 @@ let delete_row t row =
   Row_filled_cells_counter.delete_and_add_row t.row_filled_cells row;
   update_player_positions_after_row_delete t;
   true
-;;
-
-let valid_piece_position t piece =
-  Piece.for_all piece ~f:(fun coord -> in_bounds t coord && get t coord |> Tile.is_empty)
-;;
-
-let spawn_piece t client_id coord piece_type =
-  let piece = Piece.make ~piece_type ~pivot_position:coord () in
-  if valid_piece_position t piece
-  then (
-    set_piece t client_id piece;
-    true)
-  else false
 ;;
 
 (* OPTIMIZATION: check if the coordinate is higher than the highest filled row in the 
@@ -288,6 +357,10 @@ let player_move t client_id move =
 let apply_action t = function
   | Action.Player_move (client_id, move) -> player_move t client_id move
   | Spawn_piece (client_id, coord, piece_type) -> spawn_piece t client_id coord piece_type
+  | Set_player_piece (client_id, piece) ->
+    set_piece t client_id piece;
+    true
+  | Disconnect client_id -> disconnect t client_id
   | Delete_row row -> delete_row t row
   | Delete_chunk chunk_index -> delete_chunk t chunk_index
   | Add_chunk -> add_chunk t
@@ -342,14 +415,10 @@ let to_string t =
 let show t = to_string t |> print_endline
 
 let%expect_test "applying actions" =
-  let board = create ~start_num_chunks:1 ~max_num_chunks:1 ~chunk_cols:10 ~num_rows:10 in
+  let board = create ~start_num_chunks:1 ~max_num_chunks:1 ~chunk_cols:10 ~num_rows:6 in
   let _ = apply_action board (Action.Fill_tile Coordinate.origin) in
   let id = Client_id.create () in
-  let _ =
-    apply_action
-      board
-      (Action.Spawn_piece (id, Coordinate.make ~row:3 ~col:1, Piece_type.T))
-  in
+  let _ = apply_action board (Action.Spawn_piece (id, 1, Piece_type.T)) in
   show board;
   [%expect {|
     ttt
@@ -397,22 +466,21 @@ let%expect_test "adding chunk" =
 ;;
 
 let%expect_test "deleting first chunk" =
-  let t = create ~start_num_chunks:2 ~max_num_chunks:2 ~num_rows:4 ~chunk_cols:4 in
+  let t = create ~start_num_chunks:2 ~max_num_chunks:2 ~num_rows:6 ~chunk_cols:4 in
   let _ = apply_action t (Action.Fill_tile Coordinate.origin) in
   let _ = apply_action t (Action.Fill_tile (Coordinate.make ~row:1 ~col:7)) in
   let client_id = Client_id.create () in
-  let spawn_piece_action =
-    Action.Spawn_piece (client_id, Coordinate.make ~row:2 ~col:4, Piece_type.O)
-  in
+  let spawn_piece_action = Action.Spawn_piece (client_id, 4, Piece_type.O) in
   let _ = apply_action t spawn_piece_action in
   show t;
   print_s [%sexp (t.row_filled_cells |> Row_filled_cells_counter.to_array : int array)];
-  [%expect {|
+  [%expect
+    {|
     ....oo..
     ....oo..
     .......#
     #.......
-    (1 1 0 0)
+    (1 1 0 0 0 0)
     |}];
   let _ = apply_action t (Action.Delete_chunk 0) in
   show t;
@@ -422,27 +490,26 @@ let%expect_test "deleting first chunk" =
     oo..
     ...#
     ....
-    (0 1 0 0)
+    (0 1 0 0 0 0)
     |}]
 ;;
 
 let%expect_test "deleting second chunk" =
-  let t = create ~start_num_chunks:2 ~max_num_chunks:2 ~num_rows:4 ~chunk_cols:4 in
+  let t = create ~start_num_chunks:2 ~max_num_chunks:2 ~num_rows:6 ~chunk_cols:4 in
   let _ = apply_action t (Action.Fill_tile Coordinate.origin) in
   let _ = apply_action t (Action.Fill_tile (Coordinate.make ~row:1 ~col:7)) in
   let client_id = Client_id.create () in
-  let spawn_piece_action =
-    Action.Spawn_piece (client_id, Coordinate.make ~row:2 ~col:1, Piece_type.O)
-  in
+  let spawn_piece_action = Action.Spawn_piece (client_id, 1, Piece_type.O) in
   let _ = apply_action t spawn_piece_action in
   show t;
   print_s [%sexp (t.row_filled_cells |> Row_filled_cells_counter.to_array : int array)];
-  [%expect {|
+  [%expect
+    {|
     .oo.....
     .oo.....
     .......#
     #.......
-    (1 1 0 0)
+    (1 1 0 0 0 0)
     |}];
   let _ = apply_action t (Action.Delete_chunk 1) in
   show t;
@@ -452,6 +519,89 @@ let%expect_test "deleting second chunk" =
     .oo
     ...
     #..
-    (1 0 0 0)
+    (1 0 0 0 0 0)
     |}]
+;;
+
+let%expect_test "spawning piece in full column" =
+  let t = create ~start_num_chunks:1 ~max_num_chunks:1 ~num_rows:8 ~chunk_cols:15 in
+  let client_id = Client_id.create () in
+  let spawn_piece_type col piece_type =
+    let _ = apply_action t (Action.Spawn_piece (client_id, col, piece_type)) in
+    ()
+  in
+  let drop_piece () =
+    let _ = apply_action t (Action.Player_move (client_id, Player_move.Drop)) in
+    ()
+  in
+  Fn.apply_n_times
+    ~n:3
+    (fun () ->
+      spawn_piece_type 4 Piece_type.O;
+      drop_piece ())
+    ();
+  [%expect {| |}];
+  Fn.apply_n_times
+    ~n:3
+    (fun () ->
+      spawn_piece_type 4 Piece_type.O;
+      drop_piece ())
+    ();
+  List.iter Piece_type.all ~f:(fun piece_type ->
+    spawn_piece_type 4 piece_type;
+    show t;
+    print_endline "--------";
+    remove_piece t client_id);
+  [%expect
+    {|
+   OO..OO..iiii
+   OO..OO......
+   OO..OO......
+   OO..OO......
+   OO..OO......
+   OO..OO......
+   --------
+   OO..OO..oo
+   OO..OO..oo
+   OO..OO....
+   OO..OO....
+   OO..OO....
+   OO..OO....
+   --------
+   OO..OO..ttt
+   OO..OO...t.
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   --------
+   OO..OO...ss
+   OO..OO..ss.
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   --------
+   OO..OO..zz.
+   OO..OO...zz
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   --------
+   OO..OO..jjj
+   OO..OO....j
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   --------
+   OO..OO..lll
+   OO..OO..l..
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   OO..OO.....
+   --------
+  |}]
 ;;

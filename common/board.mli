@@ -24,4 +24,10 @@ val show : t -> unit
     equal. *)
 val sorted_coordinate_list : t -> (Coordinate.t * Char.t) list
 
+(** Returns a fresh board. *)
 val copy : t -> t
+
+val num_cols : t -> int
+val chunks_that_piece_is_inside : t -> Client_id.t -> int list
+val cols_per_chunk : t -> int
+val num_chunks : t -> int

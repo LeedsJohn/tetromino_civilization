@@ -19,3 +19,5 @@ let to_char = function
   | J -> 'J'
   | L -> 'L'
 ;;
+
+let all = [ I; O; T; S; Z; J; L ]

@@ -42,6 +42,7 @@ let reset t =
 ;;
 
 let delete_row t row = Array.iter t.data ~f:(fun col -> Column.delete_and_add_row col row)
+let highest_non_empty_row t col = Column.highest_non_empty t.data.(col)
 
 let show ?(with_labels = true) t =
   let rows = num_rows t in

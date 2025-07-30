@@ -4,4 +4,6 @@ module Client_id = Client_id
 module Coordinate = Coordinate
 module Piece_type = Piece_type
 module Player_move = Player_move
+module Tetromino_bag = Tetromino_bag
 module Tile = Tile
+module Circular_array = Circular_array

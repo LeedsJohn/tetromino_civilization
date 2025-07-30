@@ -12,3 +12,4 @@ type t =
 [@@deriving bin_io, compare, equal, sexp]
 
 val to_char : t -> char
+val all : t list

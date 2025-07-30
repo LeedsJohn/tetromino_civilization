@@ -8,4 +8,4 @@ type t =
   | Drop
   | Clockwise
   | Counter_clockwise
-[@@deriving bin_io, sexp]
+[@@deriving bin_io, equal, sexp]

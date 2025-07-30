@@ -1,9 +1,9 @@
 (** Create a test by playing a game that can later be replayed.
 
     [butchered by ocamlformat :( ] Controls: * a -> left * e -> right * ' -> rotate
-    counterclockwise * . -> rotate clockwise * o -> down * [space] -> drop * N -> Spawn a
-    new piece * d\d -> delete row at \d * (\d,\d) -> Fill the tile at (x, y) coordinate
-    (\d, \d) *)
+    counterclockwise * . -> rotate clockwise * o -> down * [space] -> drop * N\d -> Spawn
+    a new piece at col \d * d\d -> delete row at \d * (\d,\d) -> Fill the tile at (x, y)
+    coordinate (\d, \d) *)
 
 open! Core
 open! Tetromino_civilization_common
@@ -20,29 +20,31 @@ let char_to_player_move c client_id =
 ;;
 
 let string_to_action s client_id =
-  let%bind.Option c = if String.length s = 0 then None else Some (String.get s 0) in
+  let open Option.Let_syntax in
+  let%bind c = if String.length s = 0 then None else Some (String.get s 0) in
   if Char.is_digit c && String.length s = 2
   then (
-    let%bind.Option action = char_to_player_move (String.get s 1) client_id in
+    let%bind action = char_to_player_move (String.get s 1) client_id in
     Some (List.create ~len:(Char.get_digit_exn c) action))
   else (
     match c with
     | 'd' ->
-      let%bind.Option row_num = String.drop_prefix s 1 |> Int.of_string_opt in
+      let%bind row_num = String.drop_prefix s 1 |> Int.of_string_opt in
       Some [ Action.Delete_row row_num ]
     | '(' ->
-      let%bind.Option comma_pos = String.index s ',' in
-      let%bind.Option x = String.sub s ~pos:1 ~len:(comma_pos - 1) |> Int.of_string_opt in
-      let%bind.Option y =
+      let%bind comma_pos = String.index s ',' in
+      let%bind x = String.sub s ~pos:1 ~len:(comma_pos - 1) |> Int.of_string_opt in
+      let%bind y =
         let s = String.drop_prefix s (comma_pos + 1) in
         String.drop_suffix s 1 |> Int.of_string_opt
       in
       Some [ Action.Fill_tile (Coordinate.make ~row:y ~col:x) ]
     | 'N' ->
+      let col = String.drop_prefix s 1 |> Int.of_string_opt |> Option.value ~default:5 in
       let piece_type = List.random_element_exn [ Piece_type.I; O; T; S; Z; J; L ] in
-      Some [ Action.Spawn_piece (client_id, Coordinate.make ~row:10 ~col:5, piece_type) ]
+      Some [ Action.Spawn_piece (client_id, col, piece_type) ]
     | _ ->
-      let%bind.Option action = char_to_player_move c client_id in
+      let%bind action = char_to_player_move c client_id in
       Some [ action ])
 ;;
 
@@ -64,7 +66,8 @@ let rec step board client_id res =
 ;;
 
 let () =
-  let fname = [%string "test/assets/%{(Sys.get_argv ()).(1)}.sexp"] in
+  let fname = (Sys.get_argv ()).(1) |> String.chop_suffix_if_exists ~suffix:".sexp" in
+  let fname = [%string "test/assets/%{fname}.sexp"] in
   let board =
     Board.create ~start_num_chunks:1 ~max_num_chunks:1 ~num_rows:15 ~chunk_cols:10
   in

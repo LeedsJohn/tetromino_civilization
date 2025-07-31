@@ -63,6 +63,8 @@ let apply_action' t = function
     if not success
     then ()
     else (
+      (* TODO: THIS DOESN'T WORK! the client can't figure out how far to drop a piece
+           on an unloaded chunk *)
       (* i'm making some confusing assumptions (every client that needs to be aware of a
        downward move will already be aware of that piece) because i'm just trying to get
        something that works *)

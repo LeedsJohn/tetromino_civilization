@@ -36,6 +36,7 @@ type t =
   ; player_chunk_ids : int list Hashtbl.M(Client_id).t
   ; row_filled_cells : Row_filled_cells_counter.t
   ; full_rows : Int_hash_set.t
+  ; mutable num_filled_or_locked_cells : int
   }
 [@@deriving bin_io]
 
@@ -44,6 +45,7 @@ let copy t =
   ; player_chunk_ids = Hashtbl.copy t.player_chunk_ids
   ; row_filled_cells = Row_filled_cells_counter.copy t.row_filled_cells
   ; full_rows = Hash_set.copy t.full_rows
+  ; num_filled_or_locked_cells = t.num_filled_or_locked_cells
   }
 ;;
 
@@ -72,6 +74,7 @@ let create ~start_num_chunks ~max_num_chunks ~num_rows ~chunk_cols =
     ; player_chunk_ids = Hashtbl.create (module Client_id)
     ; row_filled_cells = Row_filled_cells_counter.make ~len:num_rows
     ; full_rows = Int_hash_set.create ()
+    ; num_filled_or_locked_cells = 0
     }
   in
   t
@@ -83,6 +86,7 @@ let chunks_that_piece_is_inside t client_id =
 
 let num_rows t = Chunk_array.get t.data 0 |> Chunk.num_rows
 let num_cols t = (Chunk_array.get t.data 0 |> Chunk.num_cols) * Chunk_array.length t.data
+let num_filled_or_locked_cells t = t.num_filled_or_locked_cells
 let cols_per_chunk t = Chunk_array.get t.data 0 |> Chunk.num_cols
 
 let in_bounds t coord =
@@ -119,10 +123,12 @@ let set t coord tile =
     Row_filled_cells_counter.incr t.row_filled_cells row;
     if Row_filled_cells_counter.get t.row_filled_cells row = num_cols t
     then Hash_set.add t.full_rows row;
+    t.num_filled_or_locked_cells <- t.num_filled_or_locked_cells + 1;
     Chunk.set chunk chunk_coord tile
   | false, true ->
     Row_filled_cells_counter.decr t.row_filled_cells row;
     Hash_set.remove t.full_rows row;
+    t.num_filled_or_locked_cells <- t.num_filled_or_locked_cells - 1;
     Chunk.set chunk chunk_coord tile
 ;;
 
@@ -170,7 +176,7 @@ let all_player_positions t =
 
 let piece_is_inside_filled_or_locked_tile t = Piece.exists ~f:(is_filled_or_locked t)
 
-let update_row_filled_count_after_deleting_chunk t chunk_index =
+let set_chunk_to_empty t chunk_index =
   for
     col = chunk_index * cols_per_chunk t
     to (chunk_index * cols_per_chunk t) + cols_per_chunk t - 1
@@ -194,7 +200,7 @@ let delete_chunk t i =
           else acc)
     in
     List.iter players_to_move ~f:(fun (client_id, _piece) -> remove_piece t client_id);
-    update_row_filled_count_after_deleting_chunk t i;
+    set_chunk_to_empty t i;
     Chunk_array.delete t.data i;
     List.iter players_to_move ~f:(fun (client_id, piece) ->
       set_piece
@@ -303,6 +309,8 @@ let update_player_positions_after_row_delete t =
 
 let delete_row t row =
   Chunk_array.iter t.data ~f:(fun chunk -> Chunk.delete_row chunk row);
+  t.num_filled_or_locked_cells
+  <- t.num_filled_or_locked_cells - Row_filled_cells_counter.get t.row_filled_cells row;
   Row_filled_cells_counter.delete_and_add_row t.row_filled_cells row;
   Hash_set.remove t.full_rows row;
   (* why is there no [Hash_set.map_in_place] or [Hash_set.map]? :( *)
@@ -663,4 +671,50 @@ let%expect_test "getting full columns" =
   let _ = delete_row t 0 in
   print_s [%sexp (t.full_rows : Int_hash_set.t)];
   [%expect {| (2) |}]
+;;
+
+let%expect_test "tracking num filled or locked cells" =
+  let t = create ~num_rows:10 ~start_num_chunks:3 ~max_num_chunks:3 ~chunk_cols:4 in
+  List.range 0 7
+  |> List.iter ~f:(fun i ->
+    set t (Coordinate.make ~row:i ~col:i) Tile.filled;
+    set t (Coordinate.make ~row:(6 - i) ~col:i) Tile.filled);
+  show t;
+  print_s [%message "" (t.num_filled_or_locked_cells : int)];
+  [%expect
+    {|
+    #.....#
+    .#...#.
+    ..#.#..
+    ...#...
+    ..#.#..
+    .#...#.
+    #.....#
+    (t.num_filled_or_locked_cells 13)
+    |}];
+  let _ = delete_row t 4 in
+  let _ = delete_row t 1 in
+  show t;
+  print_s [%message "" (t.num_filled_or_locked_cells : int)];
+  [%expect
+    {|
+    #.....#
+    .#...#.
+    ...#...
+    ..#.#..
+    #.....#
+    (t.num_filled_or_locked_cells 9)
+    |}];
+  let _ = delete_chunk t 0 in
+  show t;
+  print_s [%message "" (t.num_filled_or_locked_cells : int)];
+  [%expect
+    {|
+    ..#
+    .#.
+    ...
+    #..
+    ..#
+    (t.num_filled_or_locked_cells 4)
+    |}]
 ;;

@@ -27,7 +27,7 @@ module State_update = struct
     Rpc.Pipe_rpc.create
       ~name:"state update"
       ~version:0
-      ~bin_query:[%bin_type_class: unit]
+      ~bin_query:[%bin_type_class: Client_id.t]
       ~bin_response:[%bin_type_class: Action.t list]
       ~bin_error:[%bin_type_class: unit]
       ()

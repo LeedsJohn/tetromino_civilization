@@ -11,5 +11,5 @@ module Init : sig
 end
 
 module State_update : sig
-  val t : (unit, Action.t list, unit) Rpc.Pipe_rpc.t
+  val t : (Client_id.t, Action.t list, unit) Rpc.Pipe_rpc.t
 end

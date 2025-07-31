@@ -11,10 +11,11 @@ let process_move ~conn ~(client : Client.t) ~action =
     Rpc.One_way.dispatch_exn Protocol.Client_move.t conn action
 ;;
 
-let move_reconciliation ~conn ~(client : Client.t) =
-  let%bind pipe, _ = Rpc.Pipe_rpc.dispatch_exn Protocol.State_update.t conn () in
+let state_update ~conn ~(client : Client.t) =
+  let%bind pipe, _ =
+    Rpc.Pipe_rpc.dispatch_exn Protocol.State_update.t conn client.client_id
+  in
   Pipe.iter pipe ~f:(fun action_list ->
-    let action_list = List.rev action_list in
     List.iter action_list ~f:(fun action ->
       let _ = Board.apply_action client.confirmed_board action in
       ());
@@ -90,7 +91,7 @@ let run_stuff conn (client : Client.t) =
 let bruh conn =
   print_endline "bruh";
   let%bind client = get_state ~conn in
-  let pipe = move_reconciliation ~conn ~client in
+  let pipe = state_update ~conn ~client in
   let%bind () = pipe
   and () = run_stuff conn client in
   Deferred.unit

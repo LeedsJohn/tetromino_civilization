@@ -22,10 +22,10 @@ module Init = struct
   ;;
 end
 
-module Move_reconciliation = struct
+module State_update = struct
   let t =
     Rpc.Pipe_rpc.create
-      ~name:"move reconciliation"
+      ~name:"state update"
       ~version:0
       ~bin_query:[%bin_type_class: unit]
       ~bin_response:[%bin_type_class: Action.t list]

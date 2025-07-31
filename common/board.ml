@@ -368,12 +368,20 @@ let player_move t client_id move =
     true
 ;;
 
+let set_locked_piece t piece =
+  Piece.coordinates piece
+  |> List.filter ~f:(in_bounds t)
+  |> List.iter ~f:(fun coord -> set t coord (Tile.locked (Piece.piece_type piece)));
+  true
+;;
+
 let apply_action t = function
   | Action.Player_move (client_id, move) -> player_move t client_id move
   | Spawn_piece (client_id, coord, piece_type) -> spawn_piece t client_id coord piece_type
   | Set_player_piece (client_id, piece) ->
     set_piece t client_id piece;
     true
+  | Set_locked_piece piece -> set_locked_piece t piece
   | Disconnect client_id -> disconnect t client_id
   | Delete_row row -> delete_row t row
   | Delete_chunk chunk_index -> delete_chunk t chunk_index

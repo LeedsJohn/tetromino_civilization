@@ -12,7 +12,7 @@ let process_move ~conn ~(client : Client.t) ~action =
 ;;
 
 let move_reconciliation ~conn ~(client : Client.t) =
-  let%bind pipe, _ = Rpc.Pipe_rpc.dispatch_exn Protocol.Move_reconciliation.t conn () in
+  let%bind pipe, _ = Rpc.Pipe_rpc.dispatch_exn Protocol.State_update.t conn () in
   Pipe.iter pipe ~f:(fun action_list ->
     let action_list = List.rev action_list in
     List.iter action_list ~f:(fun action ->

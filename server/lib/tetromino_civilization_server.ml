@@ -9,8 +9,8 @@ let get_state board =
   Rpc.Rpc.implement Protocol.Init.t (fun _state () -> return (Client_id.create (), board))
 ;;
 
-let move_reconciliation action_list =
-  Rpc.Pipe_rpc.implement Protocol.Move_reconciliation.t (fun _conn _query ->
+let state_update action_list =
+  Rpc.Pipe_rpc.implement Protocol.State_update.t (fun _conn _query ->
     let last_sent_move = ref (List.length !action_list) in
     let r, w = Pipe.create () in
     Clock.every (Time_float.Span.of_sec 1.0) (fun () ->
@@ -30,10 +30,7 @@ let process_client_move board action_list =
 let implementations board action_list =
   Rpc.Implementations.create_exn
     ~implementations:
-      [ get_state board
-      ; process_client_move board action_list
-      ; move_reconciliation action_list
-      ]
+      [ get_state board; process_client_move board action_list; state_update action_list ]
     ~on_unknown_rpc:`Continue
     ~on_exception:Log_on_background_exn
 ;;

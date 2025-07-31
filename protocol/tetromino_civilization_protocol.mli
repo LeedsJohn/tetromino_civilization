@@ -10,6 +10,6 @@ module Init : sig
   val t : (unit, Client_id.t * Board.t) Rpc.Rpc.t
 end
 
-module Move_reconciliation : sig
+module State_update : sig
   val t : (unit, Action.t list, unit) Rpc.Pipe_rpc.t
 end

@@ -112,12 +112,18 @@ let set t coord tile =
   let chunk_i, chunk_coord = get_chunk_index_and_coord t coord in
   let chunk = Chunk_array.get t.data chunk_i in
   let row = Coordinate.row chunk_coord in
-  if is_filled_or_locked t coord then Row_filled_cells_counter.decr t.row_filled_cells row;
-  if Tile.is_filled tile || Tile.is_locked tile
-  then Row_filled_cells_counter.incr t.row_filled_cells row;
-  if Row_filled_cells_counter.get t.row_filled_cells row = num_cols t
-  then Hash_set.add t.full_rows row;
-  Chunk.set chunk chunk_coord tile
+  let cur_tile = get t coord in
+  match Tile.is_empty cur_tile, Tile.is_empty tile with
+  | true, true | false, false -> ()
+  | true, false ->
+    Row_filled_cells_counter.incr t.row_filled_cells row;
+    if Row_filled_cells_counter.get t.row_filled_cells row = num_cols t
+    then Hash_set.add t.full_rows row;
+    Chunk.set chunk chunk_coord tile
+  | false, true ->
+    Row_filled_cells_counter.decr t.row_filled_cells row;
+    Hash_set.remove t.full_rows row;
+    Chunk.set chunk chunk_coord tile
 ;;
 
 let player_chunks t client_id =
@@ -195,6 +201,11 @@ let delete_chunk t i =
         t
         client_id
         (Piece.move piece ~dir:(Coordinate.make ~row:0 ~col:(-cols_per_chunk t))));
+    Hash_set.clear t.full_rows;
+    List.range 0 (num_rows t)
+    |> List.filter ~f:(fun row ->
+      Row_filled_cells_counter.get t.row_filled_cells row = num_rows t)
+    |> List.iter ~f:(fun row -> Hash_set.add t.full_rows row);
     true)
   else false
 ;;

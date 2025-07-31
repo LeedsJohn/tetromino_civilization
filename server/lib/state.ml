@@ -55,7 +55,7 @@ let add_action t chunk_ids action =
   t.move_count <- t.move_count + 1
 ;;
 
-let apply_action t = function
+let apply_action' t = function
   | Action.Player_move (client_id, _move) as act ->
     let prev_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
     let prev_piece = Board.get_piece_exn t.board client_id in
@@ -122,4 +122,10 @@ let apply_action t = function
     add_action t [ chunk_id ] act;
     let _ = Board.apply_action t.board act in
     ()
+;;
+
+let apply_action t action =
+  apply_action' t action;
+  Board.get_full_rows t.board
+  |> List.iter ~f:(fun row -> apply_action' t (Action.Delete_row row))
 ;;

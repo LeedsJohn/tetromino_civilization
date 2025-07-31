@@ -12,3 +12,7 @@ let up = make ~row:1 ~col:0
 let left = make ~row:0 ~col:(-1)
 let right = make ~row:0 ~col:1
 let origin = make ~row:0 ~col:0
+
+let manhattan_distance (row1, col1) (row2, col2) =
+  Int.abs (row2 - row1) + Int.abs (col2 - col1)
+;;

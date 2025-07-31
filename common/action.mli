@@ -4,7 +4,7 @@ open! Core
 type t =
   | Player_move of Client_id.t * Player_move.t
   | Spawn_piece of Client_id.t * int * Piece_type.t (** column to spawn in *)
-  | Disconnect of Client_id.t
+  | Remove_piece of Client_id.t
   | Set_player_piece of Client_id.t * Piece.t
   | Set_locked_piece of Piece.t
   | Delete_row of int

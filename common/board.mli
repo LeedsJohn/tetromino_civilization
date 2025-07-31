@@ -31,3 +31,5 @@ val num_cols : t -> int
 val chunks_that_piece_is_inside : t -> Client_id.t -> int list
 val cols_per_chunk : t -> int
 val num_chunks : t -> int
+val get_piece_exn : t -> Client_id.t -> Piece.t
+val get_piece : t -> Client_id.t -> Piece.t option

@@ -14,8 +14,7 @@ let add t move_count action =
   Action_list_array.append_some t (move_count, action)
 ;;
 
-let get_actions_starting_with t n =
-  Action_list_array.to_list t
-  |> List.filter_opt
-  |> List.filter ~f:(fun (move_count, _action) -> move_count >= n)
+let get_actions_after t n =
+  Action_list_array.to_some_list t
+  |> List.filter ~f:(fun (move_count, _action) -> move_count > n)
 ;;

@@ -137,11 +137,6 @@ let highest_non_empty_row t ~col =
   Chunk.highest_non_empty_row chunk adj_col
 ;;
 
-let disconnect t client_id =
-  remove_piece t client_id;
-  true
-;;
-
 let set_piece t client_id piece =
   remove_piece t client_id;
   let chunk_ids =
@@ -382,7 +377,9 @@ let apply_action t = function
     set_piece t client_id piece;
     true
   | Set_locked_piece piece -> set_locked_piece t piece
-  | Disconnect client_id -> disconnect t client_id
+  | Remove_piece client_id ->
+    remove_piece t client_id;
+    true
   | Delete_row row -> delete_row t row
   | Delete_chunk chunk_index -> delete_chunk t chunk_index
   | Add_chunk -> add_chunk t

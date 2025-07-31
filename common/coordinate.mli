@@ -8,6 +8,7 @@ val row_col : t -> int * int
 val row : t -> int
 val col : t -> int
 val add : t -> t -> t
+val manhattan_distance : t -> t -> int
 
 (** Unit vector pointing down. *)
 val down : t

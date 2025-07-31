@@ -34,7 +34,7 @@ let implementations state =
 
 let do_thing () =
   let state =
-    State.create ~start_num_chunks:1 ~max_num_chunks:10 ~num_rows:50 ~chunk_cols:6
+    State.create ~start_num_chunks:1 ~max_num_chunks:10 ~num_rows:100 ~chunk_cols:16
   in
   let implementations = implementations state in
   let hostname = Unix.gethostname () in

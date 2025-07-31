@@ -58,6 +58,7 @@ let add_action t chunk_ids action =
 let apply_action t = function
   | Action.Player_move (client_id, _move) as act ->
     let prev_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
+    let prev_piece = Board.get_piece_exn t.board client_id in
     let success = Board.apply_action t.board act in
     if not success
     then ()
@@ -66,7 +67,9 @@ let apply_action t = function
        downward move will already be aware of that piece) because i'm just trying to get
        something that works *)
       match Board.get_piece t.board client_id with
-      | None -> add_action t prev_chunk_ids act
+      | None ->
+        add_action t prev_chunk_ids (Action.Set_player_piece (client_id, prev_piece));
+        add_action t prev_chunk_ids act
       | Some new_piece ->
         let cur_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
         add_action
@@ -75,13 +78,15 @@ let apply_action t = function
           (Action.Set_player_piece (client_id, new_piece)))
   | Spawn_piece (client_id, _col, _piece_type) as act ->
     let prev_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
-    let _ = Board.apply_action t.board act in
-    let cur_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
-    let piece = Board.get_piece_exn t.board client_id in
-    add_action
-      t
-      (prev_chunk_ids @ cur_chunk_ids)
-      (Action.Set_player_piece (client_id, piece))
+    let success = Board.apply_action t.board act in
+    if success
+    then (
+      let cur_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
+      let piece = Board.get_piece_exn t.board client_id in
+      add_action
+        t
+        (prev_chunk_ids @ cur_chunk_ids)
+        (Action.Set_player_piece (client_id, piece)))
   | Remove_piece client_id as act ->
     add_action t (Board.chunks_that_piece_is_inside t.board client_id) act;
     let _ = Board.apply_action t.board act in

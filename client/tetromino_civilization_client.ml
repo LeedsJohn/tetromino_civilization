@@ -25,7 +25,7 @@ let state_update ~conn ~(client : Client.t) =
 
 let get_state ~conn =
   let%bind client_id, board = Rpc.Rpc.dispatch_exn Protocol.Init.t conn () in
-  return { Client.predicted_board = board; confirmed_board = board; client_id }
+  return { Client.predicted_board = board; confirmed_board = Board.copy board; client_id }
 ;;
 
 let random_piece_action client_id =
@@ -35,7 +35,6 @@ let random_piece_action client_id =
 ;;
 
 let john conn (client : Client.t) =
-  let down_count = ref 0 in
   let get_thingy e low high = List.create ~len:(Random.int_incl low high) e in
   let weighted_moves =
     [ Player_move.Down, 3, 6
@@ -47,40 +46,26 @@ let john conn (client : Client.t) =
     |> List.map ~f:(fun (e, low, high) -> get_thingy e low high)
     |> List.join
   in
-  Clock.every (Time_float.Span.of_sec 0.05) (fun () ->
+  let count = ref 0 in
+  Clock.every (Time_float.Span.of_sec 0.01) (fun () ->
     if Random.int 10 = 0
     then (
       let action =
-        if !down_count = -1
-        then (
-          down_count := 0;
-          random_piece_action client.client_id)
-        else if !down_count >= 10
-        then (
-          down_count := -1;
-          Action.Player_move (client.client_id, Player_move.Drop))
+        if Board.get_piece client.predicted_board client.client_id |> Option.is_none
+        then random_piece_action client.client_id
         else (
           let move = List.random_element_exn weighted_moves in
-          (match move with
-           | Player_move.Down -> down_count := !down_count + 1
-           | _ -> ());
           Action.Player_move (client.client_id, move))
       in
       process_move ~conn ~client ~action;
-      Board.show client.predicted_board;
-      print_endline ""));
+      count := !count + 1;
+      if !count = 100
+      then (
+        Board.show client.predicted_board;
+        print_endline "";
+        count := 0)));
   Deferred.unit
 ;;
-
-(* let _ = In_channel.input_line In_channel.stdin in
-  process_move
-    ~conn
-    ~client
-    ~action:(Action.Player_move (client.client_id, Player_move.Down));
-  print_endline "showing board";
-  Out_channel.flush Out_channel.stdout;
-  Board.show client.predicted_board;
-  john conn client *)
 
 let run_stuff conn (client : Client.t) =
   let action = random_piece_action client.client_id in

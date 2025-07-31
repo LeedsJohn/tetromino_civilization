@@ -23,7 +23,10 @@ module Row_filled_cells_counter = struct
   ;;
 
   let to_array = Ar.to_some_array
+  let get t i = Ar.get_some_exn t i
 end
+
+module Int_hash_set = Hash_set.Make_binable (Int)
 
 (* A player can potentially be in two chunks simultaneously if their piece spans two
    chunks.
@@ -32,6 +35,7 @@ type t =
   { data : Chunk_array.t
   ; player_chunk_ids : int list Hashtbl.M(Client_id).t
   ; row_filled_cells : Row_filled_cells_counter.t
+  ; full_rows : Int_hash_set.t
   }
 [@@deriving bin_io]
 
@@ -39,6 +43,7 @@ let copy t =
   { data = Chunk_array.copy t.data
   ; player_chunk_ids = Hashtbl.copy t.player_chunk_ids
   ; row_filled_cells = Row_filled_cells_counter.copy t.row_filled_cells
+  ; full_rows = Hash_set.copy t.full_rows
   }
 ;;
 
@@ -66,6 +71,7 @@ let create ~start_num_chunks ~max_num_chunks ~num_rows ~chunk_cols =
     { data
     ; player_chunk_ids = Hashtbl.create (module Client_id)
     ; row_filled_cells = Row_filled_cells_counter.make ~len:num_rows
+    ; full_rows = Int_hash_set.create ()
     }
   in
   t
@@ -109,6 +115,8 @@ let set t coord tile =
   if is_filled_or_locked t coord then Row_filled_cells_counter.decr t.row_filled_cells row;
   if Tile.is_filled tile || Tile.is_locked tile
   then Row_filled_cells_counter.incr t.row_filled_cells row;
+  if Row_filled_cells_counter.get t.row_filled_cells row = num_cols t
+  then Hash_set.add t.full_rows row;
   Chunk.set chunk chunk_coord tile
 ;;
 
@@ -285,9 +293,17 @@ let update_player_positions_after_row_delete t =
 let delete_row t row =
   Chunk_array.iter t.data ~f:(fun chunk -> Chunk.delete_row chunk row);
   Row_filled_cells_counter.delete_and_add_row t.row_filled_cells row;
+  Hash_set.remove t.full_rows row;
+  (* why is there no [Hash_set.map_in_place] or [Hash_set.map]? :( *)
+  Hash_set.filter t.full_rows ~f:(fun full_row -> full_row > row)
+  |> Hash_set.iter ~f:(fun row ->
+    Hash_set.remove t.full_rows row;
+    Hash_set.add t.full_rows (row - 1));
   update_player_positions_after_row_delete t;
   true
 ;;
+
+let get_full_rows t = Hash_set.to_list t.full_rows
 
 (* OPTIMIZATION: check if the coordinate is higher than the highest filled row in the 
    column and skip the linear scan if it is. *)
@@ -623,4 +639,17 @@ let%expect_test "spawning piece in full column" =
    OO..OO.....
    --------
   |}]
+;;
+
+let%expect_test "getting full columns" =
+  let t = create ~num_rows:10 ~start_num_chunks:1 ~max_num_chunks:1 ~chunk_cols:4 in
+  List.range 0 4
+  |> List.iter ~f:(fun col ->
+    set t (Coordinate.make ~row:0 ~col) Tile.filled;
+    set t (Coordinate.make ~row:3 ~col) Tile.filled);
+  print_s [%sexp (t.full_rows : Int_hash_set.t)];
+  [%expect {| (0 3) |}];
+  let _ = delete_row t 0 in
+  print_s [%sexp (t.full_rows : Int_hash_set.t)];
+  [%expect {| (2) |}]
 ;;

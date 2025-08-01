@@ -2,6 +2,8 @@ open! Core
 
 module Tile_circular_array = Circular_array.Make (struct
     type t = Tile.t [@@deriving bin_io, sexp_of]
+
+    let copy = Fn.id
   end)
 
 module Ar = Tile_circular_array

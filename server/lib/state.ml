@@ -98,7 +98,6 @@ let apply_action' t = function
       Piece.coordinates piece
       |> List.map ~f:Coordinate.col
       |> List.map ~f:(col_to_chunk_id t)
-      |> List.dedup_and_sort ~compare:Int.compare
     in
     add_action t relevant_chunks act
   | Delete_row _row as act ->

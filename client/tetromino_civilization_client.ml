@@ -34,15 +34,23 @@ let random_piece_action client_id col =
 ;;
 
 let john conn (client : Client.t) =
-  let get_thingy e low high = List.create ~len:(Random.int_incl low high) e in
+  let get_thingy e weight =
+    let len =
+      match weight with
+      | `Exactly n -> n
+      | `Between (low, high) -> Random.int_incl low high
+    in
+    List.create ~len e
+  in
+  let left_right_weight = Random.int_incl 2 4 in
   let weighted_moves =
-    [ Player_move.Down, 3, 6
-    ; Left, 2, 4
-    ; Right, 2, 4
-    ; Counter_clockwise, 1, 3
-    ; Clockwise, 1, 3
+    [ Player_move.Down, `Between (3, 6)
+    ; Left, `Exactly left_right_weight
+    ; Right, `Exactly left_right_weight
+    ; Counter_clockwise, `Between (1, 3)
+    ; Clockwise, `Between (1, 3)
     ]
-    |> List.map ~f:(fun (e, low, high) -> get_thingy e low high)
+    |> List.map ~f:(fun (e, weight) -> get_thingy e weight)
     |> List.join
   in
   let count = ref 0 in

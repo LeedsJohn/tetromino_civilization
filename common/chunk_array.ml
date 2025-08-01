@@ -2,6 +2,8 @@ open! Core
 
 module Ar = Circular_array.Make (struct
     type t = Chunk.t [@@deriving bin_io, sexp_of]
+
+    let copy = Chunk.copy
   end)
 
 type t = Ar.t [@@deriving bin_io, sexp_of]

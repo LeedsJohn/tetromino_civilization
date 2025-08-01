@@ -3,6 +3,8 @@ open Tetromino_civilization_common
 
 module Action_list_array = Circular_array.Make (struct
     type t = int * Action.t [@@deriving bin_io, sexp_of]
+
+    let copy = Fn.id
   end)
 
 type t = Action_list_array.t

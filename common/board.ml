@@ -3,6 +3,8 @@ open! Core
 module Row_filled_cells_counter = struct
   module Ar = Circular_array.Make (struct
       type t = int [@@deriving bin_io, sexp_of]
+
+      let copy = Fn.id
     end)
 
   type t = Ar.t [@@deriving bin_io, sexp_of]

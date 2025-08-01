@@ -37,7 +37,10 @@ functor
     let highest_non_empty t = t.highest_non_empty
 
     let copy { data; start; end_; length; lowest_non_empty; highest_non_empty } =
-      { data = Option_array.copy data
+      { data =
+          Option_array.map data ~f:(function
+            | None -> None
+            | Some e -> Elem.copy e |> Some)
       ; start
       ; end_
       ; length
@@ -170,6 +173,8 @@ functor
 
 module Char_circular_array = Make (struct
     type t = char [@@deriving bin_io, equal, sexp_of]
+
+    let copy = Fn.id
   end)
 
 let%expect_test "getting and setting elements" =

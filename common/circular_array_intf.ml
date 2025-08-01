@@ -4,6 +4,8 @@ open! Core
 
 module type S = sig
   type t [@@deriving bin_io, sexp_of]
+
+  val copy : t -> t
 end
 
 module type Circular_array = sig

@@ -15,7 +15,7 @@ let get_state state =
 let state_update state =
   Rpc.Pipe_rpc.implement Protocol.State_update.t (fun _conn client_id ->
     let r, w = Pipe.create () in
-    Clock.every (Time_float.Span.of_sec 1.0) (fun () ->
+    Clock.every (Time_float.Span.of_sec 0.20) (fun () ->
       Pipe.write_without_pushback_if_open w (State.get_new_moves state client_id));
     return (Ok r))
 ;;
@@ -34,7 +34,7 @@ let implementations state =
 
 let do_thing () =
   let state =
-    State.create ~start_num_chunks:1 ~max_num_chunks:10 ~num_rows:100 ~chunk_cols:16
+    State.create ~start_num_chunks:5 ~max_num_chunks:10 ~num_rows:100 ~chunk_cols:16
   in
   let implementations = implementations state in
   let hostname = Unix.gethostname () in

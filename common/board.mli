@@ -35,3 +35,5 @@ val get_piece_exn : t -> Client_id.t -> Piece.t
 val get_piece : t -> Client_id.t -> Piece.t option
 val get_full_rows : t -> int list
 val num_filled_or_locked_cells : t -> int
+val should_lock : t -> Piece.t -> Player_move.t -> bool
+val get_moved_piece : t -> Piece.t -> Player_move.t -> Piece.t

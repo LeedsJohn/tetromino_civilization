@@ -28,9 +28,8 @@ let get_state ~conn =
   return { Client.predicted_board = board; confirmed_board = Board.copy board; client_id }
 ;;
 
-let random_piece_action client_id =
+let random_piece_action client_id col =
   let piece_type = List.random_element_exn Piece_type.all in
-  let col = Random.int_incl 0 5 in
   Action.Spawn_piece (client_id, col, piece_type)
 ;;
 
@@ -47,17 +46,23 @@ let john conn (client : Client.t) =
     |> List.join
   in
   let count = ref 0 in
+  let prev_col = ref 5 in
   Clock.every (Time_float.Span.of_sec 0.01) (fun () ->
     if Random.int 10 = 0
     then (
       let action =
         if Board.get_piece client.predicted_board client.client_id |> Option.is_none
-        then random_piece_action client.client_id
+        then random_piece_action client.client_id !prev_col
         else (
           let move = List.random_element_exn weighted_moves in
           Action.Player_move (client.client_id, move))
       in
       process_move ~conn ~client ~action;
+      let _ =
+        Board.get_piece client.predicted_board client.client_id
+        |> Option.map ~f:(fun piece ->
+          prev_col := Piece.pivot_position piece |> Coordinate.col)
+      in
       count := !count + 1;
       if !count = 100
       then (
@@ -68,7 +73,7 @@ let john conn (client : Client.t) =
 ;;
 
 let run_stuff conn (client : Client.t) =
-  let action = random_piece_action client.client_id in
+  let action = random_piece_action client.client_id (Random.int_incl 45 55) in
   process_move ~conn ~client ~action;
   john conn client
 ;;

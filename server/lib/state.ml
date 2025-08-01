@@ -50,34 +50,29 @@ let col_to_chunk_id t col = col / Board.cols_per_chunk t.board
 
 (* [action] added to all [chunk_ids] with the same move number. *)
 let add_action t chunk_ids action =
+  let chunk_ids = List.stable_dedup chunk_ids ~compare:Int.compare in
   List.iter chunk_ids ~f:(fun chunk_id ->
     Action_list.add t.moves_by_chunk.(chunk_id) t.move_count action);
   t.move_count <- t.move_count + 1
 ;;
 
 let apply_action' t = function
-  | Action.Player_move (client_id, _move) as act ->
+  | Action.Player_move (client_id, move) ->
     let prev_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
     let prev_piece = Board.get_piece_exn t.board client_id in
-    let success = Board.apply_action t.board act in
-    if not success
-    then ()
-    else (
-      (* TODO: THIS DOESN'T WORK! the client can't figure out how far to drop a piece
-           on an unloaded chunk *)
-      (* i'm making some confusing assumptions (every client that needs to be aware of a
-       downward move will already be aware of that piece) because i'm just trying to get
-       something that works *)
-      match Board.get_piece t.board client_id with
-      | None ->
-        add_action t prev_chunk_ids (Action.Set_player_piece (client_id, prev_piece));
-        add_action t prev_chunk_ids act
-      | Some new_piece ->
-        let cur_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
-        add_action
-          t
-          (prev_chunk_ids @ cur_chunk_ids)
-          (Action.Set_player_piece (client_id, new_piece)))
+    let new_piece = Board.get_moved_piece t.board prev_piece move in
+    let act = Action.Set_player_piece (client_id, new_piece) in
+    let _ = Board.apply_action t.board act in
+    let all_chunks =
+      prev_chunk_ids @ Board.chunks_that_piece_is_inside t.board client_id
+    in
+    add_action t all_chunks act;
+    if Board.should_lock t.board prev_piece move
+    then
+      [ Action.Set_locked_piece new_piece; Remove_piece client_id ]
+      |> List.iter ~f:(fun action ->
+        let _ = Board.apply_action t.board action in
+        add_action t all_chunks action)
   | Spawn_piece (client_id, _col, _piece_type) as act ->
     let prev_chunk_ids = Board.chunks_that_piece_is_inside t.board client_id in
     let success = Board.apply_action t.board act in
